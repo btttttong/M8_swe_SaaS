@@ -41,6 +41,8 @@ dependencies {
 	implementation("org.hibernate.orm:hibernate-community-dialects:6.6.8.Final")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
+	
 	
 }
 
