@@ -66,11 +66,23 @@ public class GitHubPollingJob {
     // ✅ Extract email from event details
     private String extractEmailFromDetails(String detailsJson) {
         try {
+            System.out.println("🔍 Raw JSON Before Fix: " + detailsJson);  // Debugging
+    
+            // ✅ Fix JSON formatting: Replace '=' with ':' and ensure proper quotes
+            detailsJson = detailsJson.replace("=", ":").replace("'", "\"");
+    
+            System.out.println("🔍 Formatted JSON: " + detailsJson);  // Debugging
+    
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode rootNode = objectMapper.readTree(detailsJson);
-            return rootNode.path("commit").path("author").path("email").asText(null);
+    
+            // ✅ Extract email from `commit.author.email`
+            String email = rootNode.path("commit").path("author").path("email").asText(null);
+    
+            System.out.println("📧 Extracted Email: " + email);
+            return email;
         } catch (Exception e) {
-            System.err.println("Error extracting email: " + e.getMessage());
+            System.err.println("❌ Error extracting email: " + e.getMessage());
             return null;
         }
     }
