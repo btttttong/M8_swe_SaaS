@@ -1,7 +1,12 @@
 package com.swe.saas.scheduler;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swe.saas.model.Alert;
 import com.swe.saas.model.RegisteredRepo;
+import com.swe.saas.repository.AlertRepository;
 import com.swe.saas.repository.RegisteredRepoRepository;
+import com.swe.saas.service.EmailService;
 import com.swe.saas.service.GitHubActivityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,7 +18,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GitHubPollingJob {
     private final RegisteredRepoRepository registeredRepoRepository;
+    private final AlertRepository alertRepository;
     private final GitHubActivityService activityService;
+    private final EmailService emailService;
 
     @Scheduled(fixedRate = 300000) // Runs every 5 minutes
     public void pollGitHub() {
@@ -21,17 +28,50 @@ public class GitHubPollingJob {
         
         List<RegisteredRepo> registeredRepos = registeredRepoRepository.findAll();
         if (registeredRepos.isEmpty()) {
-            System.out.println("No registered repositories. Skipping polling.");
+            System.out.println(" No registered repositories. Skipping polling.");
             return;
         }
 
         for (RegisteredRepo repo : registeredRepos) {
             System.out.println("🔍 Checking repo: " + repo.getOwner() + "/" + repo.getName());
             try {
-                activityService.getRecentActivities(repo.getOwner(), repo.getName(), System.getenv("GITHUB_TOKEN"));
+                var activities = activityService.getRecentActivities(repo.getOwner(), repo.getName(), System.getenv("GITHUB_TOKEN"));
+
+                // Check for alerts
+                List<Alert> alerts = alertRepository.findByOwnerAndRepo(repo.getOwner(), repo.getName());
+                for (Alert alert : alerts) {
+                    for (var activity : activities) {
+                        if (activity.getEventType().equalsIgnoreCase(alert.getEventType())) {
+                            if (alert.getCondition() == null || activity.getDetails().contains(alert.getCondition())) {
+                                System.out.println("Alert triggered for " + repo.getName() + " [" + alert.getEventType() + "]");
+
+                                // ✅ Extract email from GitHub event details
+                                String email = extractEmailFromDetails(activity.getDetails());
+                                if (email != null) {
+                                    emailService.sendAlertEmail(email, repo.getName(), alert.getEventType(), activity.getDetails());
+                                } else {
+                                    System.out.println(" No valid email found in event details.");
+                                }
+                            }
+                        }
+                    }
+                }
+
             } catch (Exception e) {
                 System.err.println("Failed to fetch activities for " + repo.getName() + ": " + e.getMessage());
             }
+        }
+    }
+
+    // ✅ Extract email from event details
+    private String extractEmailFromDetails(String detailsJson) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode rootNode = objectMapper.readTree(detailsJson);
+            return rootNode.path("commit").path("author").path("email").asText(null);
+        } catch (Exception e) {
+            System.err.println("Error extracting email: " + e.getMessage());
+            return null;
         }
     }
 }
