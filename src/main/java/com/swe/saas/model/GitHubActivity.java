@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "github_activity")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,7 +19,8 @@ public class GitHubActivity {
 
     private String repositoryOwner;
     private String repositoryName;
-    private String eventType; // commit, issue, PR, release
+    private String eventType; // Commit, Issue, Release
+    @Column(columnDefinition = "TEXT")
     private String details;
     private LocalDateTime eventTimestamp;
 }

@@ -38,9 +38,8 @@ public class GitHubActivityController {
             @RequestParam String repo,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        //  Check if repo is registered
         if (!registeredRepoRepository.findByOwnerAndName(owner, repo).isPresent()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(" Repo is not registered. Please register first.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Repo is not registered. Please register first.");
         }
 
         List<GitHubActivityDTO> activities = activityService.getRecentActivities(owner, repo, authHeader);
@@ -72,5 +71,10 @@ public class GitHubActivityController {
     @GetMapping("/test")
     public ResponseEntity<String> testEndpoint() {
         return ResponseEntity.ok(" API is working!");
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<?> getRepositoryStatistics() {
+        return ResponseEntity.ok(activityService.getStatistics());
     }
 }
